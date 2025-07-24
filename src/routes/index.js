@@ -7,6 +7,7 @@ import cartRoute from "./cart.route.js";
 import orderRouter from "./order.route.js";
 import orderReturnRouter from "./orderReturn.route.js";
 import purchaseRouter from "./purchase.route.js";
+import uploadRouter from "./upload.route.js";
 const router = Router();
 
 router.use("/api", userRouter);
@@ -17,6 +18,7 @@ router.use("/api", cartRoute);
 router.use("/api", orderRouter);
 router.use("/api", orderReturnRouter);
 router.use("/api", purchaseRouter);
+router.use("/api", uploadRouter);
 router.get("/", (req, res) => {
   res.status(200).json({ message: "API is alive!" });
 });
