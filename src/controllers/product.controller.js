@@ -5,6 +5,7 @@ import logger from "../utils/winston.js";
 import prisma from "../utils/client.js";
 import path from "path";
 import fs from "fs";
+import cloudinary from "../utils/cloudinary.js";
 import pdf from "pdf-creator-node";
 import excelJS from "exceljs";
 
@@ -28,8 +29,6 @@ export const createProduct = async (req, res) => {
   const file = req.files.file;
   const fileSize = file.data.length;
   const ext = path.extname(file.name);
-  const fileName = file.md5 + ext;
-  const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
   const allowedType = allowFileExt;
 
   if (!allowedType.includes(ext.toLowerCase()))
@@ -45,30 +44,34 @@ export const createProduct = async (req, res) => {
     });
 
   try {
-    file.mv(`./public/images/${fileName}`, async (err) => {
-      if (err)
-        return res.status(500).json({
-          message: err.message,
-          result: null,
+    // Upload ke Cloudinary
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: "image" },
+      async (error, result) => {
+        if (error) {
+          return res.status(500).json({ message: error.message, result: null });
+        }
+        // Simpan URL Cloudinary ke database
+        const dbResult = await prisma.product.create({
+          data: {
+            code: setCode("PRD-"),
+            barcode: value.barcode ? value.barcode : null,
+            productName: value.productName,
+            image: result.public_id, // atau result.secure_url
+            url: result.secure_url,
+            qty: value.qty,
+            price: value.price,
+            kategoryId: value.kategoryId,
+            supplierId: value.supplierId,
+          },
         });
-      const result = await prisma.product.create({
-        data: {
-          code: setCode("PRD-"),
-          barcode: value.barcode ? value.barcode : null,
-          productName: value.productName,
-          image: fileName,
-          url: url,
-          qty: value.qty,
-          price: value.price,
-          kategoryId: value.kategoryId,
-          supplierId: value.supplierId,
-        },
-      });
-      return res.status(200).json({
-        message: "success",
-        result,
-      });
-    });
+        return res.status(200).json({
+          message: "success",
+          result: dbResult,
+        });
+      }
+    );
+    stream.end(file.data); // Kirim buffer ke Cloudinary
   } catch (error) {
     logger.error(
       "controllers/product.controller.js:createProduct - " + error.message
