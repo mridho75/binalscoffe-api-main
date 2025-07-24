@@ -3,6 +3,18 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "build": "npx prisma generate",
+    "db:push": "npx prisma db push",
+    "db:deploy": "npx prisma migrate deploy",
+    "db:studio": "npx prisma studio"
+  },
   "dependencies": {
     "@prisma/client": "^6.1.0",
     "bcrypt": "^5.1.1",
@@ -14,8 +26,6 @@
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "pdf-creator-node": "^2.3.5",
-    "prisma": "^6.1.0",
-    "prisma-erd-generator": "^2.0.4",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
@@ -24,20 +34,7 @@
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
     "nodemon": "^3.1.9",
-    "prisma": "^5.7.0"
-  },
-  "type": "module",
-  "scripts": {
-    "dev": "node index.js",
-    "start": "node index.js",
-    "build": "npx prisma generate",
-    "postinstall": "npx prisma generate",
-    "db:deploy": "npx prisma migrate deploy",
-    "db:push": "npx prisma db push",
-    "db:studio": "npx prisma studio",
-    "vercel-build": "npx prisma generate && npx prisma db push"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "prisma": "^6.1.0",
+    "prisma-erd-generator": "^2.0.4"
   }
 }
