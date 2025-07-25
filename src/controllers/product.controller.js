@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import pdf from "pdf-creator-node";
 import excelJS from "exceljs";
+import cloudinary from "../utils/cloudinary.js";
 
 export const createProduct = async (req, res) => {
   const fileMaxSize = process.env.FILE_MAX_SIZE;
@@ -24,12 +25,9 @@ export const createProduct = async (req, res) => {
       message: "Image cannot be empty",
       result: null,
     });
-  // jika semuanya lolos
   const file = req.files.file;
   const fileSize = file.data.length;
   const ext = path.extname(file.name);
-  const fileName = file.md5 + ext;
-  const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
   const allowedType = allowFileExt;
 
   if (!allowedType.includes(ext.toLowerCase()))
@@ -45,30 +43,33 @@ export const createProduct = async (req, res) => {
     });
 
   try {
-    file.mv(`./public/images/${fileName}`, async (err) => {
-      if (err)
-        return res.status(500).json({
-          message: err.message,
-          result: null,
+    // Upload ke Cloudinary
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: "image" },
+      async (error, result) => {
+        if (error) {
+          return res.status(500).json({ message: error.message, result: null });
+        }
+        const dbResult = await prisma.product.create({
+          data: {
+            code: setCode("PRD-"),
+            barcode: value.barcode ? value.barcode : null,
+            productName: value.productName,
+            image: result.public_id,
+            url: result.secure_url,
+            qty: value.qty,
+            price: value.price,
+            kategoryId: value.kategoryId,
+            supplierId: value.supplierId,
+          },
         });
-      const result = await prisma.product.create({
-        data: {
-          code: setCode("PRD-"),
-          barcode: value.barcode ? value.barcode : null,
-          productName: value.productName,
-          image: fileName,
-          url: url,
-          qty: value.qty,
-          price: value.price,
-          kategoryId: value.kategoryId,
-          supplierId: value.supplierId,
-        },
-      });
-      return res.status(200).json({
-        message: "success",
-        result,
-      });
-    });
+        return res.status(200).json({
+          message: "success",
+          result: dbResult,
+        });
+      }
+    );
+    stream.end(file.data);
   } catch (error) {
     logger.error(
       "controllers/product.controller.js:createProduct - " + error.message
@@ -216,12 +217,9 @@ export const getProductByCategory = async (req, res) => {
 };
 
 export const updateProduct = async (req, res) => {
-  // cek id ada atau tidak
   const { id } = req.params;
   const product = await prisma.product.findUnique({
-    where: {
-      id: Number(id),
-    },
+    where: { id: Number(id) },
   });
   if (!product) {
     return res.status(404).json({
@@ -236,58 +234,55 @@ export const updateProduct = async (req, res) => {
       result: null,
     });
   }
-  // jika lolos semua
-  let fileName = "";
-  let url = "";
-  if (
-    !req.files ||
-    req.files === null ||
-    req.files.file === undefined ||
-    !req.files.file
-  ) {
-    fileName = product.image;
-    url = product.url;
-  } else {
+  let image = product.image;
+  let url = product.url;
+  if (req.files && req.files.file) {
     const fileMaxSize = process.env.FILE_MAX_SIZE;
     const allowFileExt = process.env.FILE_EXTENSION;
     const msgFileSize = process.env.FILE_MAX_MESSAGE;
     const file = req.files.file;
     const fileSize = file.data.length;
     const ext = path.extname(file.name);
-    fileName = file.md5 + ext;
-    url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
     const allowedType = allowFileExt;
-
     if (!allowedType.includes(ext.toLowerCase()))
-      return res
-        .status(422)
-        .json({ message: "Invalid image type", result: null });
+      return res.status(422).json({
+        message: "Invalid image type",
+        result: null,
+      });
     if (fileSize > fileMaxSize)
       return res.status(422).json({
         message: msgFileSize,
         result: null,
       });
-
-    file.mv(`./public/images/${fileName}`, async (err) => {
-      if (err)
-        return res.status(500).json({ message: err.message, result: null });
+    // Hapus gambar lama di Cloudinary
+    if (product.image) {
+      try {
+        await cloudinary.uploader.destroy(product.image);
+      } catch {}
+    }
+    // Upload gambar baru ke Cloudinary
+    await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { resource_type: "image" },
+        async (error, result) => {
+          if (error) return reject(error);
+          image = result.public_id;
+          url = result.secure_url;
+          resolve();
+        }
+      );
+      stream.end(file.data);
     });
-
-    // delete old image
-    const filePath = `./public/images/${product.image}`;
-    fs.unlinkSync(filePath);
   }
   try {
     const result = await prisma.product.update({
-      where: {
-        id: Number(req.params.id),
-      },
+      where: { id: Number(req.params.id) },
       data: {
         code: product.code,
         barcode: value.barcode ? value.barcode : null,
         productName: value.productName,
-        image: fileName,
-        url: url,
+        image,
+        url,
         qty: value.qty,
         price: value.price,
         kategoryId: value.kategoryId,
@@ -310,12 +305,9 @@ export const updateProduct = async (req, res) => {
 };
 
 export const deleteProduct = async (req, res) => {
-  // cek id ada atau tidak
   const { id } = req.params;
   const product = await prisma.product.findUnique({
-    where: {
-      id: Number(id),
-    },
+    where: { id: Number(id) },
   });
   if (!product) {
     return res.status(404).json({
@@ -325,13 +317,13 @@ export const deleteProduct = async (req, res) => {
   }
   try {
     const result = await prisma.product.delete({
-      where: {
-        id: Number(req.params.id),
-      },
+      where: { id: Number(req.params.id) },
     });
-    if (result) {
-      const filePath = `./public/images/${product.image}`;
-      fs.unlinkSync(filePath);
+    // Hapus gambar di Cloudinary
+    if (product.image) {
+      try {
+        await cloudinary.uploader.destroy(product.image);
+      } catch {}
     }
     return res.status(200).json({
       message: "success",
