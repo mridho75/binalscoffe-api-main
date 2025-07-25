@@ -13,13 +13,12 @@
     "build": "npx prisma generate",
     "db:push": "npx prisma db push",
     "db:deploy": "npx prisma migrate deploy",
-    "db:studio": "npx prisma studio",
-    "postinstall": "prisma generate"
+    "db:studio": "npx prisma studio"
+    ,"postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
     "bcrypt": "^5.1.1",
-    "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "exceljs": "^4.4.0",
@@ -27,7 +26,6 @@
     "express-fileupload": "^1.5.1",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.0.2",
     "pdf-creator-node": "^2.3.5",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
