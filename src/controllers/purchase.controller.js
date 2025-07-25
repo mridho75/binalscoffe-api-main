@@ -3,6 +3,8 @@ import { setOrderCode } from "../utils/documentPatern.js";
 import logger from "../utils/winston.js";
 import { purchaseValidation } from "../validations/purchase.validation.js";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import pdf from "pdf-creator-node";
 import excelJS from "exceljs";
 export const createPurchase = async (req, res) => {
@@ -180,7 +182,10 @@ export const getPurchaseById = async (req, res) => {
 };
 
 export const generatePdf = async (req, res) => {
-  let html = fs.readFileSync("./src/templates/PurchaseTemplat.html", "utf-8");
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const templatePath = path.join(__dirname, "../templates/PurchaseTemplat.html");
+  let html = fs.readFileSync(templatePath, "utf-8");
   let options = {
     format: "A4",
     orientation: "portrait",

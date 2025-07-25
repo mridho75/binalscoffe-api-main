@@ -5,6 +5,8 @@ import logger from "../utils/winston.js";
 import prisma from "../utils/client.js";
 import path from "path";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import pdf from "pdf-creator-node";
 import excelJS from "exceljs";
 import cloudinary from "../utils/cloudinary.js";
@@ -341,7 +343,10 @@ export const deleteProduct = async (req, res) => {
 };
 
 export const generatePdf = async (req, res) => {
-  let html = fs.readFileSync("./src/templates/ProductTemplate.html", "utf-8");
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const templatePath = path.join(__dirname, "../templates/ProductTemplate.html");
+  let html = fs.readFileSync(templatePath, "utf-8");
   let options = {
     format: "A4",
     orientation: "portrait",
