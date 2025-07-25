@@ -175,18 +175,12 @@ export const deleteSupplier = async (req, res) => {
 };
 
 export const generatePdf = async (req, res) => {
-  let pathFile = "./public/pdf";
-  let fileName = "supplier.pdf";
-  let fullPath = pathFile + "/" + fileName;
   let html = fs.readFileSync("./src/templates/SupplierTemplate.html", "utf8");
   let options = {
     format: "A4",
     orientation: "portrait",
     border: "10mm",
-    header: {
-      height: "0.1mm",
-      contents: "",
-    },
+    header: { height: "0.1mm", contents: "" },
     footer: {
       height: "28mm",
       contents: {
@@ -196,9 +190,6 @@ export const generatePdf = async (req, res) => {
     },
   };
   try {
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
     const data = await prisma.supplier.findMany({});
     let suppliers = [];
     data.forEach((supplier, no) => {
@@ -215,19 +206,15 @@ export const generatePdf = async (req, res) => {
     });
     let document = {
       html: html,
-      data: {
-        suppliers: suppliers,
-      },
-      path: fullPath,
-      type: "",
+      data: { suppliers: suppliers },
+      type: "buffer",
     };
     const process = await pdf.create(document, options);
-    if (process) {
-      return res.status(200).json({
-        message: "success",
-        result: "/pdf/" + fileName,
-      });
-    }
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "attachment; filename=Supplier.pdf",
+    });
+    return res.send(process);
   } catch (error) {
     logger.error(
       "controllers/supplier.controller.js:generatePdf - " + error.message
@@ -242,11 +229,7 @@ export const generatePdf = async (req, res) => {
 export const generateExcel = async (req, res) => {
   const workbook = new excelJS.Workbook();
   const worksheet = workbook.addWorksheet("Supplier");
-  const path = "./public/excel";
   try {
-    if (fs.existsSync(`${path}/Supplier.xlsx`)) {
-      fs.unlinkSync(`${path}/Supplier.xlsx`);
-    }
     const data = await prisma.supplier.findMany({});
     worksheet.columns = [
       { header: "No", key: "s_no", width: 5 },
@@ -277,11 +260,16 @@ export const generateExcel = async (req, res) => {
     worksheet.getRow(1).eachCell((cell) => {
       cell.font = { bold: true };
     });
-    await workbook.xlsx.writeFile(`${path}/Supplier.xlsx`);
-    return res.status(200).json({
-      message: "success",
-      result: `/excel/Supplier.xlsx`,
-    });
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Supplier.xlsx"
+    );
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
     logger.error(
       "controllers/supplier.controller.js:generateExcel - " + error.message

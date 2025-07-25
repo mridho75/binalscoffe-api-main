@@ -341,18 +341,12 @@ export const deleteProduct = async (req, res) => {
 };
 
 export const generatePdf = async (req, res) => {
-  let pathFile = "./public/pdf";
-  let fileName = "product.pdf";
-  let fullPath = pathFile + "/" + fileName;
   let html = fs.readFileSync("./src/templates/ProductTemplate.html", "utf-8");
   let options = {
     format: "A4",
     orientation: "portrait",
     border: "10mm",
-    header: {
-      height: "0.1mm",
-      contents: "",
-    },
+    header: { height: "0.1mm", contents: "" },
     footer: {
       height: "28mm",
       contents: {
@@ -362,9 +356,6 @@ export const generatePdf = async (req, res) => {
     },
   };
   try {
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
     const data = await prisma.product.findMany({});
     let barangs = [];
     data.forEach((barang, no) => {
@@ -378,19 +369,15 @@ export const generatePdf = async (req, res) => {
     });
     let document = {
       html: html,
-      data: {
-        barangs: barangs,
-      },
-      path: fullPath,
-      type: "",
+      data: { barangs: barangs },
+      type: "buffer",
     };
     const process = await pdf.create(document, options);
-    if (process) {
-      return res.status(200).json({
-        message: "success",
-        result: "/pdf/" + fileName,
-      });
-    }
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "attachment; filename=Product.pdf",
+    });
+    return res.send(process);
   } catch (error) {
     logger.error(
       "controllers/product.controller.js:generatePdf - " + error.message
@@ -405,11 +392,7 @@ export const generatePdf = async (req, res) => {
 export const generateExcel = async (req, res) => {
   const workbook = new excelJS.Workbook();
   const worksheet = workbook.addWorksheet("Product");
-  const path = "./public/excel";
   try {
-    if (fs.existsSync(`${path}/Product.xlsx`)) {
-      fs.unlinkSync(`${path}/Product.xlsx`);
-    }
     const data = await prisma.product.findMany({});
     worksheet.columns = [
       { header: "No", key: "s_no", width: 5 },
@@ -439,11 +422,16 @@ export const generateExcel = async (req, res) => {
     worksheet.getRow(1).eachCell((cell) => {
       cell.font = { bold: true };
     });
-    await workbook.xlsx.writeFile(`${path}/Product.xlsx`);
-    return res.status(200).json({
-      message: "success",
-      result: `/excel/Product.xlsx`,
-    });
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Product.xlsx"
+    );
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
     logger.error(
       "controllers/product.controller.js:generateExcel - " + error.message

@@ -149,19 +149,12 @@ export const getAllOrder = async (req, res) => {
 };
 
 export const generatePdf = async (req, res) => {
-  let pathFile = "./public/pdf";
-  let fileName = "order.pdf";
-  let fullPath = pathFile + "/" + fileName;
   let html = fs.readFileSync("./src/templates/SalesTemplate.html", "utf-8");
   let options = {
     format: "A4",
     orientation: "portrait",
     border: "10mm",
-    header: {
-      height: "0.1mm",
-      // contents: '<div style="text-align: center;">Author: Pojok Code</div>',
-      contents: "",
-    },
+    header: { height: "0.1mm", contents: "" },
     footer: {
       height: "28mm",
       contents: {
@@ -171,9 +164,6 @@ export const generatePdf = async (req, res) => {
     },
   };
   try {
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
     const startDate = new Date(req.body.startDate);
     const endDate = new Date(req.body.endDate);
     if (isNaN(startDate) && isNaN(endDate)) {
@@ -190,11 +180,7 @@ export const generatePdf = async (req, res) => {
         },
       },
       include: {
-        user: {
-          select: {
-            name: true,
-          },
-        },
+        user: { select: { name: true } },
         Orderdetail: true,
       },
     });
@@ -213,19 +199,15 @@ export const generatePdf = async (req, res) => {
     });
     let document = {
       html: html,
-      data: {
-        orders: orders,
-      },
-      path: fullPath,
-      type: "",
+      data: { orders: orders },
+      type: "buffer",
     };
     const process = await pdf.create(document, options);
-    if (process) {
-      return res.status(200).json({
-        message: "success",
-        result: "/pdf/" + fileName,
-      });
-    }
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "attachment; filename=Sales.pdf",
+    });
+    return res.send(process);
   } catch (error) {
     logger.error(
       "controllers/product.controller.js:generatePdf - " + error.message
@@ -240,11 +222,7 @@ export const generatePdf = async (req, res) => {
 export const generateExcel = async (req, res) => {
   const workbook = new excelJS.Workbook();
   const worksheet = workbook.addWorksheet("order");
-  const path = "./public/excel";
   try {
-    if (fs.existsSync(`${path}/order.xlsx`)) {
-      fs.unlinkSync(`${path}/order.xlsx`);
-    }
     const startDate = new Date(req.body.startDate);
     const endDate = new Date(req.body.endDate);
     if (isNaN(startDate) && isNaN(endDate)) {
@@ -296,11 +274,16 @@ export const generateExcel = async (req, res) => {
     worksheet.getRow(1).eachCell((cell) => {
       cell.font = { bold: true };
     });
-    await workbook.xlsx.writeFile(`${path}/order.xlsx`);
-    return res.status(200).json({
-      message: "success",
-      result: `/excel/order.xlsx`,
-    });
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Sales.xlsx"
+    );
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
     logger.error(
       "controllers/product.controller.js:generateExcel - " + error.message
