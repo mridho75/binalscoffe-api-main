@@ -238,8 +238,8 @@ export const generateExcel = async (req, res) => {
     }
     const data = await prisma.$queryRaw`
       SELECT  o.code, o.date, o.total,o.ppn,o.grandTotal,d.productName,d.price,
-      d.qty, d.totalPrice from Orders o 
-      INNER JOIN Orderdetail d ON(d.orderId=o.id)
+      d.qty, d.totalPrice from orders o 
+      INNER JOIN orderdetail d ON(d.orderId=o.id)
       WHERE o.date BETWEEN ${startDate} AND ${endDate}`;
     worksheet.columns = [
       { header: "No", key: "s_no", width: 5 },
